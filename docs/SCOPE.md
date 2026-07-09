@@ -1,4 +1,4 @@
-# Scope & Anomaly Log
+# SCOPE.md — Anomaly Log & Database Schema
 
 ## Database Schema
 
@@ -20,7 +20,7 @@
 | base_currency | TEXT | default 'INR' |
 | created_at | TIMESTAMP | auto |
 
-### group_memberships (key table)
+### group_memberships (key table for time-based membership)
 | Column | Type | Notes |
 |--------|------|-------|
 | id | UUID | PK |
@@ -89,36 +89,39 @@ Tracks each CSV import with anomaly counts and resolution log.
 
 ## Anomaly Log
 
-The CSV `expenses_export.csv` contains 18 deliberate data problems. The importer detects each one and handles it according to the policy below.
+The CSV `expenses_export.csv` contains 17 deliberate data problems. The importer detects each one and handles it according to the policy below.
 
 | # | Row | Description | Problem | Detection | Action | Policy |
 |---|-----|-------------|---------|-----------|--------|--------|
-| 1 | 5 | dinner - marina bites | Exact duplicate of row 4 | Same date, normalized description, same amount, same payer | `skip` | First occurrence wins. Exact duplicates are silently skipped. |
-| 2 | 6 | Electricity Feb | Comma in amount: "1,200" | Regex detects comma in amount string | `round_amount` | Strip commas before parsing. Result: 1200.00 |
-| 3 | 8 | Movie night snacks | Lowercase payer: "priya" | Name normalization to lowercase | `keep` | All names normalized to lowercase before matching. |
-| 4 | 9 | Cylinder refill | Sub-paisa precision: 899.995 | Decimal places > 2 detected | `round_amount` | Round to 2 decimal places → 900.00 |
-| 5 | 10 | Groceries DMart | Name alias: "Priya S" | Name normalization strips spaces, maps "priyas" → "priya" | `keep` | Aliases table handles common variations. |
-| 6 | 12 | House cleaning supplies | Missing payer | Empty `paid_by` field | `needs_user_input` | Surface to user in review modal. User enters payer name. |
-| 7 | 13 | Rohan paid Aisha back | Settlement logged as expense | Keywords: "paid back" in description | `convert_to_settlement` | Move to `settlements` table. Not an expense. |
-| 8 | 14 | Pizza Friday | Percentages sum to 110% | 30+30+30+20 = 110 | `normalize_percentages` | Normalize proportionally to 100%. Each person gets × (100/110). |
-| 9 | 19 | Goa villa booking | Foreign currency (USD) | currency = 'USD' | `convert_currency` | Convert to INR using stored rate (83.00) at import time. |
-| 10 | 20 | Beach shack lunch | Foreign currency (USD) | currency = 'USD' | `convert_currency` | Convert to INR using stored rate. |
-| 11 | 22 | Parasailing | Non-member in split: "Dev's friend Kabir" | Name not found in group_memberships | `exclude` | Exclude from split. Add `non_member` anomaly flag. |
-| 12 | 23-24 | Dinner at Thalassa / Thalassa dinner | Conflicting duplicate (different amounts: 2400 vs 2450) | Same date, similar description, different amounts | `keep` | Note says "Aisha also logged this I think hers is wrong." No clear rule on which to delete, so both kept with flags. User can clean up manually. |
-| 13 | 25 | Parasailing refund | Negative amount: -30 USD | amount < 0 | `treat_as_refund` | Mark expense status as 'refund'. Applied against original expense in balance calc. |
-| 14 | 26 | Airport cab | Corrupted date "Mar-14" | Unrecognized format | `infer_date` | Infer from previous row date + 1 day. |
-| 15 | 26 | Airport cab | Trailing space in name "rohan " | Name normalization trims whitespace | `keep` | Trim before matching. |
-| 16 | 27 | Groceries DMart | Missing currency | Empty currency field | `default_inr` | Default to INR when currency is blank. |
-| 17 | 30 | Dinner order Swiggy | Zero amount | amount === 0 | `skip` | Skip zero-amount rows. Note says "counted twice earlier." |
-| 18 | 31 | Weekend brunch | Percentages sum to 110% | 30+30+30+20 = 110 | `normalize_percentages` | Normalize to 100% proportionally. |
-| 19 | 33 | Deep cleaning service | Ambiguous date: 5/4/2026 | Could be May 4 or April 5 | `keep` | Use MM/DD/YYYY parsing → May 4, 2026. Add `ambiguous_date` flag. |
-| 20 | 35 | Groceries BigBasket | Stale member: Meera after moving out | expense_date > Meera's left_at | `exclude` | Exclude Meera from split. Add `stale_membership_excluded` flag. |
-| 21 | 41 | Furniture for common room | Split type mismatch: says "equal" but has explicit shares | split_type='equal' AND split_details not empty | `use_explicit_shares` | Trust explicit shares over the label. Use the share values. |
+| 1 | 5-6 | Dinner at Marina Bites / dinner - marina bites | Exact duplicate — same date, same amount, same payer | Normalized description matches, date matches, amount matches, payer matches | `skip` | First occurrence wins. Second row skipped silently. |
+| 2 | 23-24 | Dinner at Thalassa (₹2400) / Thalassa dinner (₹2450) | Conflicting duplicate — same date, similar description, different amounts, different payers | Normalized description similarity > 50%, date matches, amounts differ by < ₹100 | `keep` | Note says "Aisha also logged this I think hers is wrong" but no clear rule auto-deletes based on subjective notes. Both kept with `conflicting_duplicate` flag. User must clean up manually. |
+| 3 | 13 | Rohan paid Aisha back | Settlement logged as expense | Keywords "paid back" in description, or regex `X paid Y back` pattern | `convert_to_settlement` | Not a shared cost. Moved to `settlements` table. Removed from expenses. |
+| 4 | 12 | House cleaning supplies | Missing payer | Empty `paid_by` field | `needs_user_input` | Cannot guess who paid. Surface in review modal. User enters payer name. |
+| 5 | 14 | Pizza Friday | Percentages sum to 110% | 30+30+30+20 = 110 | `normalize_percentages` | Normalize proportionally to 100%. Each pct × (100/110). |
+| 6 | 31 | Weekend brunch | Percentages sum to 110% | Same as above | `normalize_percentages` | Same policy. |
+| 7 | 19 | Goa villa booking | Foreign currency (USD) | currency = 'USD' | `convert_currency` | Convert to INR using stored rate (83.00) at import time. |
+| 8 | 20 | Beach shack lunch | Foreign currency (USD) | currency = 'USD' | `convert_currency` | Same. |
+| 9 | 22 | Parasailing | Foreign currency (USD) | currency = 'USD' | `convert_currency` | Same. |
+| 10 | 25 | Parasailing refund | Foreign currency (USD) + negative amount | currency = 'USD', amount < 0 | `convert_currency` + `treat_as_refund` | Convert USD to INR. Mark status as 'refund'. |
+| 11 | 27 | Groceries DMart | Missing currency | Empty currency field | `default_inr` | Default to INR when blank. |
+| 12 | 22 | Parasailing | Non-member in split — "Dev's friend Kabir" | Name not found in group_memberships | `exclude` | Exclude from split. Add `non_member` anomaly flag. |
+| 13 | 8 | Movie night snacks | Lowercase payer — "priya" | Name normalization to lowercase | `keep` | All names normalized to lowercase before matching. |
+| 14 | 10 | Groceries DMart | Name alias — "Priya S" | Name normalization strips spaces, maps "priyas" → "priya" | `keep` | Aliases table handles common variations. |
+| 15 | 26 | Airport cab | Trailing space in name — "rohan " | Name normalization trims whitespace | `keep` | Trim before matching. |
+| 16 | 26 | Airport cab | Corrupted date — "Mar-14" | Unrecognized format (could be 2014 or March 14) | `infer_date` | Parser does not accept 2-digit years. Falls back to inference from previous row date + 1 day. |
+| 17 | 33 | Deep cleaning service | Ambiguous date — 5/4/2026 | Could be May 4 or April 5 | `keep` | Use MM/DD/YYYY parsing → May 4, 2026. Add `ambiguous_date` flag. |
+| 18 | 30 | Dinner order Swiggy | Zero amount | amount === 0 | `skip` | Skip zero-amount rows. Note says "counted twice earlier." |
+| 19 | 9 | Cylinder refill | Sub-paisa precision — ₹899.995 | Decimal places > 2 detected | `round_amount` | Round to 2 decimal places → ₹900.00 |
+| 20 | 6 | Electricity Feb | Comma in amount — "1,200" | Regex detects comma in amount string | `round_amount` | Strip commas before parsing. Result: 1200.00 |
+| 21 | 41 | Furniture for common room | Split type mismatch — says "equal" but has explicit shares | split_type='equal' AND split_details not empty | `use_explicit_shares` | Trust explicit shares over the label. Use the share values. |
+| 22 | 35 | Groceries BigBasket | Stale member — Meera after moving out | expense_date > Meera's left_at | `exclude` | Exclude Meera from split. Add `stale_membership_excluded` flag. |
+| 23 | Various | Membership-over-time | Dev guest for trip, Sam joins mid-April | System design — `group_memberships` table with `joined_at`/`left_at` | `exclude`/`include` | Each expense checks membership dates. Only active members on that date are included in splits. |
 
 **Total rows in CSV:** 42  
-**Anomalies detected:** 21 (some rows have multiple issues)  
+**Anomalies detected:** 23 (some rows have multiple issues)  
 **Rows needing user input:** 1 (House cleaning supplies)  
 **Rows skipped:** 2 (exact duplicate, zero amount)  
 **Rows converted to settlements:** 1 (Rohan paid Aisha back)  
 **Rows with normalized percentages:** 2 (Pizza Friday, Weekend brunch)  
 **Rows with currency conversion:** 4 (Goa villa, Beach shack, Parasailing, Parasailing refund)  
+**Rows with excluded members:** 3+ (Meera stale, Kabir non-member, Dev on non-trip expenses)  
