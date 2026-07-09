@@ -483,6 +483,15 @@ app.get('/api/imports/:id/report', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+const path = require('path');
+
+// Serve React build files
+app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+// For any route not handled by API, serve React app
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+});
 // ============================================
 // START SERVER
 // ============================================
