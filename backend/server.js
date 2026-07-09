@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 5000;
 // ============================================
 // HEALTH CHECK
 // ============================================
-app.get('/', (req, res) => {
+app.get('/api/health', (req, res) => {
   res.json({ message: 'Splitwise API is running' });
 });
 
