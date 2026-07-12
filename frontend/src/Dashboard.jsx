@@ -10,13 +10,31 @@ function Dashboard() {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [users, setUsers] = useState([]); // NEW: Store users
 
   const groupId = '85f4a540-38f5-4e0e-98b8-aa3ff8f260ce';
 
+  // NEW: Fetch users on component mount
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // NEW: Fetch expenses/balances when tab changes
   useEffect(() => {
     if (activeTab === 'expenses') fetchExpenses();
     if (activeTab === 'balances') fetchBalances();
   }, [activeTab]);
+
+  // NEW: Function to fetch users
+  const fetchUsers = async () => {
+    try {
+      const res = await api.get('/api/users');
+      setUsers(res.data.users || []);
+    } catch (err) {
+      setMessage('Error fetching users');
+      setMessageType('error');
+    }
+  };
 
   const fetchExpenses = async () => {
     setLoading(true);
@@ -139,7 +157,7 @@ function Dashboard() {
               description: form.description.value,
               amount: parseFloat(form.amount.value),
               currency: form.currency.value,
-              paid_by_user_id: form.paid_by.value,
+              paid_by_user_id: form.paid_by.value, // Now this is a UUID
               expense_date: form.date.value,
               split_type: form.split_type.value,
               split_details: form.split_details.value,
@@ -176,8 +194,15 @@ function Dashboard() {
               </div>
             </div>
             <div className="form-group">
-              <label>Paid By (User ID)</label>
-              <input name="paid_by" placeholder="Paste user ID" required />
+              <label>Paid By</label>
+              <select name="paid_by" required>
+                <option value="">Select who paid...</option>
+                {users.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="form-group">
               <label>Date</label>
@@ -194,7 +219,7 @@ function Dashboard() {
                 </select>
               </div>
               <div className="form-group">
-                <label>Split With</label>
+                <label>Split With (semicolon-separated names)</label>
                 <input name="split_with" placeholder="Aisha;Rohan;Priya" />
               </div>
             </div>
@@ -219,8 +244,8 @@ function Dashboard() {
             const form = e.target;
             const data = {
               group_id: groupId,
-              from_user_id: form.from.value,
-              to_user_id: form.to.value,
+              from_user_id: form.from.value, // Now this is a UUID
+              to_user_id: form.to.value, // Now this is a UUID
               amount: parseFloat(form.amount.value),
               currency: form.currency.value,
               settlement_date: form.date.value,
@@ -240,12 +265,26 @@ function Dashboard() {
           }}>
             <div className="form-row">
               <div className="form-group">
-                <label>From (Payer ID)</label>
-                <input name="from" placeholder="Who is paying?" required />
+                <label>From (Payer)</label>
+                <select name="from" required>
+                  <option value="">Select payer...</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
-                <label>To (Receiver ID)</label>
-                <input name="to" placeholder="Who is receiving?" required />
+                <label>To (Receiver)</label>
+                <select name="to" required>
+                  <option value="">Select receiver...</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="form-row">
