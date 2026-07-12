@@ -96,8 +96,8 @@ const ImportModal = ({ isOpen, onClose, onImportComplete, groupId }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>📥 Import CSV</h2>
-          <button className="modal-close" onClick={onClose}>✕</button>
+          <h2>Import CSV</h2>
+          <button className="modal-close" onClick={onClose}>x</button>
         </div>
 
         {!importResult ? (
@@ -112,7 +112,7 @@ const ImportModal = ({ isOpen, onClose, onImportComplete, groupId }) => {
                   onChange={(e) => setFile(e.target.files[0])}
                   required
                 />
-                {file && <span className="file-name">📄 {file.name}</span>}
+                {file && <span className="file-name">{file.name}</span>}
               </div>
               
               {error && <div className="error-message">{error}</div>}
@@ -123,7 +123,7 @@ const ImportModal = ({ isOpen, onClose, onImportComplete, groupId }) => {
                 Cancel
               </button>
               <button type="submit" className="btn btn-success" disabled={loading}>
-                {loading ? '⏳ Importing...' : '⬆️ Import'}
+                {loading ? 'Importing...' : 'Import'}
               </button>
             </div>
           </form>
@@ -131,7 +131,7 @@ const ImportModal = ({ isOpen, onClose, onImportComplete, groupId }) => {
           <div className="modal-body">
             {/* Import Results */}
             <div className="import-results">
-              <h3>📋 Import Report</h3>
+              <h3>Import Report</h3>
               
               <div className="result-stats">
                 <div className="stat-item success">
@@ -169,11 +169,11 @@ const ImportModal = ({ isOpen, onClose, onImportComplete, groupId }) => {
                   >
                     {downloading ? (
                       <>
-                        <span>⏳</span> Downloading...
+                        <span></span> Downloading...
                       </>
                     ) : (
                       <>
-                        <span>📥</span> Download Report
+                        <span></span> Download Report
                       </>
                     )}
                   </button>
@@ -184,7 +184,7 @@ const ImportModal = ({ isOpen, onClose, onImportComplete, groupId }) => {
             {/* Review Rows */}
             {reviewRows.length > 0 && (
               <div className="review-section">
-                <h4>⚠️ Rows Needing Review</h4>
+                <h4>Rows Needing Review</h4>
                 {reviewRows.map((row, idx) => (
                   <div className="review-item" key={idx}>
                     <h5>Row {row.row}: {row.description}</h5>
@@ -221,7 +221,7 @@ const ImportModal = ({ isOpen, onClose, onImportComplete, groupId }) => {
             {/* All Anomalies */}
             {importResult.anomalies && importResult.anomalies.length > 0 && (
               <div className="anomalies-section">
-                <h4>⚠️ All Anomalies</h4>
+                <h4>All Anomalies</h4>
                 <div className="table-wrapper">
                   <table className="anomaly-table">
                     <thead>

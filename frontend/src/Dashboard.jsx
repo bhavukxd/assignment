@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ExpenseTable, BalanceSummary, ImportModal, GroupCard } from './components';
 import api from './api';
 
@@ -11,13 +12,19 @@ function Dashboard() {
   const [messageType, setMessageType] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [users, setUsers] = useState([]); // NEW: Store users
+  const navigate = useNavigate();
 
   const groupId = '85f4a540-38f5-4e0e-98b8-aa3ff8f260ce';
 
   // NEW: Fetch users on component mount
   useEffect(() => {
+    if (!localStorage.getItem('token')) {
+      navigate('/login');
+      return;
+    }
+
     fetchUsers();
-  }, []);
+  }, [navigate]);
 
   // NEW: Fetch expenses/balances when tab changes
   useEffect(() => {
@@ -77,10 +84,10 @@ function Dashboard() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>💰 Splitwise <span>v1.0</span></h1>
+        <h1>Splitwise <span>v1.0</span></h1>
         <div className="header-user">
-          <span className="user-name">👋 {user.name || 'User'}</span>
-          <button className="btn-logout" onClick={() => { localStorage.clear(); window.location.href = '/login'; }}>
+          <span className="user-name">{user.name || 'User'}</span>
+          <button className="btn-logout" onClick={() => { localStorage.clear(); navigate('/login'); }}>
             Logout
           </button>
         </div>
@@ -93,22 +100,22 @@ function Dashboard() {
             className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
             onClick={() => setActiveTab(tab)}
           >
-            {tab === 'add-expense' ? '➕ Add Expense' : 
-             tab === 'settlement' ? '💳 Record Payment' : 
+            {tab === 'add-expense' ? 'Add Expense' : 
+             tab === 'settlement' ? 'Record Payment' : 
              tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
 
       {message && <div className={`message ${messageType}`}>{message}</div>}
-      {loading && <div className="loading-state">⏳ Loading...</div>}
+      {loading && <div className="loading-state">Loading...</div>}
 
       {activeTab === 'expenses' && (
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">📊 Expenses</h2>
+            <h2 className="card-title">Expenses</h2>
             <button className="btn btn-danger" onClick={handleCleanupDuplicates}>
-              🧹 Clean Up Duplicates
+              Clean Up Duplicates
             </button>
           </div>
           <ExpenseTable expenses={expenses} />
@@ -117,20 +124,20 @@ function Dashboard() {
 
       {activeTab === 'balances' && (
         <div className="card">
-          <h2 className="card-title">💰 Balance Summary</h2>
+          <h2 className="card-title">Balance Summary</h2>
           <BalanceSummary balances={balances} />
         </div>
       )}
 
       {activeTab === 'import' && (
         <div className="card">
-          <h2 className="card-title">📥 Import CSV</h2>
+          <h2 className="card-title">Import CSV</h2>
           <p style={{ color: '#6c757d', marginBottom: 16 }}>
             Upload the <code>expenses_export.csv</code> file. The app will detect anomalies and show you a report.
           </p>
           
           <button className="btn btn-success" onClick={() => setShowImportModal(true)}>
-            ⬆️ Open Import Modal
+            Open Import Modal
           </button>
 
           <ImportModal
@@ -148,7 +155,7 @@ function Dashboard() {
 
       {activeTab === 'add-expense' && (
         <div className="card">
-          <h2 className="card-title">➕ Add Expense</h2>
+          <h2 className="card-title">Add Expense</h2>
           <form onSubmit={async (e) => {
             e.preventDefault();
             const form = e.target;
@@ -167,7 +174,7 @@ function Dashboard() {
 
             try {
               await api.post('/api/expenses', data);
-              setMessage('✅ Expense added!');
+              setMessage('Expense added!');
               setMessageType('success');
               form.reset();
               fetchExpenses();
@@ -231,14 +238,14 @@ function Dashboard() {
               <label>Notes</label>
               <input name="notes" placeholder="Optional notes" />
             </div>
-            <button type="submit" className="btn btn-primary">➕ Add Expense</button>
+            <button type="submit" className="btn btn-primary">Add Expense</button>
           </form>
         </div>
       )}
 
       {activeTab === 'settlement' && (
         <div className="card">
-          <h2 className="card-title">💳 Record Payment</h2>
+          <h2 className="card-title">Record Payment</h2>
           <form onSubmit={async (e) => {
             e.preventDefault();
             const form = e.target;
@@ -254,7 +261,7 @@ function Dashboard() {
 
             try {
               await api.post('/api/settlements', data);
-              setMessage('✅ Settlement recorded!');
+              setMessage('Settlement recorded!');
               setMessageType('success');
               form.reset();
               fetchBalances();
@@ -308,7 +315,7 @@ function Dashboard() {
               <label>Notes</label>
               <input name="notes" placeholder="Optional notes" />
             </div>
-            <button type="submit" className="btn btn-success">💳 Record Payment</button>
+            <button type="submit" className="btn btn-success">Record Payment</button>
           </form>
         </div>
       )}
