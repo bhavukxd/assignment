@@ -1,3 +1,7 @@
+test password
+priya@test.com
+123456
+
 # Splitwise App
 
 This repository contains a Splitwise-like app with:
